@@ -1,49 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Manhattan bounding box (approximate)
+const MANHATTAN_BOUNDS = {
+  latMin: 40.700,
+  latMax: 40.882,
+  lonMin: -74.020,
+  lonMax: -73.907,
+};
+
+function isInManhattan(lat: number, lon: number): boolean {
+  return (
+    lat >= MANHATTAN_BOUNDS.latMin &&
+    lat <= MANHATTAN_BOUNDS.latMax &&
+    lon >= MANHATTAN_BOUNDS.lonMin &&
+    lon <= MANHATTAN_BOUNDS.lonMax
+  );
+}
+
 export async function GET(request: NextRequest) {
-  // Extract client IP from headers
-  const forwarded = request.headers.get("x-forwarded-for");
-  const realIp = request.headers.get("x-real-ip");
-  const ip = forwarded?.split(",")[0]?.trim() || realIp || "127.0.0.1";
+  const { searchParams } = new URL(request.url);
+  const lat = parseFloat(searchParams.get("lat") || "");
+  const lon = parseFloat(searchParams.get("lon") || "");
+
+  if (isNaN(lat) || isNaN(lon)) {
+    return NextResponse.json({
+      success: false,
+      message: "Arrr! Ye forgot to share yer coordinates! Grant location access, matey!",
+    });
+  }
 
   try {
-    // Query ip-api.com for geolocation
-    const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,city,regionName,country,lat,lon`);
-    const geoData = await geoRes.json();
-
-    if (geoData.status === "fail") {
-      return NextResponse.json({
-        success: false,
-        message: "Arrr! The stars cannot guide us to yer position. Are ye hidin' in the void, matey?",
-        debug: { ip, error: geoData.message },
-      });
-    }
-
-    const city = (geoData.city || "").toLowerCase();
-    const isManchester = city === "manchester";
-
-    if (isManchester) {
+    if (isInManhattan(lat, lon)) {
       const flag = process.env.CTF_FLAG || "EHAX{PLACEHOLDER_SET_YOUR_FLAG}";
       return NextResponse.json({
         success: true,
-        message: "Shiver me timbers! Ye've found the treasure in Manchester!",
+        message: "Shiver me timbers! Ye've found the treasure in Manhattan!",
         flag,
-        location: {
-          city: geoData.city,
-          region: geoData.regionName,
-          country: geoData.country,
-        },
+        location: { lat, lon },
       });
     }
 
     return NextResponse.json({
       success: false,
-      message: `Blimey! Ye be sailin' near "${geoData.city || "unknown waters"}", but the treasure lies buried in the heart of Manchester! Set yer compass north, matey!`,
-      location: {
-        city: geoData.city,
-        region: geoData.regionName,
-        country: geoData.country,
-      },
+      message: `Blimey! Ye be sailin' at ${lat.toFixed(4)}, ${lon.toFixed(4)}, but the treasure lies elsewhere! Set yer compass right, matey!`,
+      location: { lat, lon },
     });
   } catch {
     return NextResponse.json(

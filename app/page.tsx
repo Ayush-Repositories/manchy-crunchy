@@ -14,23 +14,38 @@ export default function TreasureHunt() {
     setFlag("");
     setLocation(null);
 
-    try {
-      const res = await fetch("/api/check-location");
-      const data = await res.json();
-
-      if (data.success) {
-        setStatus("success");
-        setFlag(data.flag);
-        setMessage(data.message);
-      } else {
-        setStatus("fail");
-        setMessage(data.message);
-      }
-      if (data.location) setLocation(data.location);
-    } catch {
+    if (!navigator.geolocation) {
       setStatus("fail");
-      setMessage("A storm disrupted our navigation! Try again, sailor.");
+      setMessage("Yer vessel has no compass! This browser doesn't support geolocation.");
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(`/api/check-location?lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+
+          if (data.success) {
+            setStatus("success");
+            setFlag(data.flag);
+            setMessage(data.message);
+          } else {
+            setStatus("fail");
+            setMessage(data.message);
+          }
+          if (data.location) setLocation(data.location);
+        } catch {
+          setStatus("fail");
+          setMessage("A storm disrupted our navigation! Try again, sailor.");
+        }
+      },
+      () => {
+        setStatus("fail");
+        setMessage("Ye denied the compass! Grant location permission to find the treasure, matey!");
+      }
+    );
   }
 
   return (
@@ -58,15 +73,15 @@ export default function TreasureHunt() {
 
         {/* Map illustration */}
         <div className="map-border rounded-md p-6 mb-8 bg-[#ecdcb8] relative overflow-hidden">
-          <div className="absolute top-2 left-3 text-xs opacity-30 font-mono">53.4808&deg;N</div>
-          <div className="absolute top-2 right-3 text-xs opacity-30 font-mono">2.2426&deg;W</div>
+          <div className="absolute top-2 left-3 text-xs opacity-30 font-mono">40.7831&deg;N</div>
+          <div className="absolute top-2 right-3 text-xs opacity-30 font-mono">73.9712&deg;W</div>
 
           <div className="text-6xl mb-3">&#128506;</div>
           <p className="text-base leading-relaxed">
             Ahoy, adventurer! A legendary treasure has been buried in a
-            great city of the North. The ancient maps speak of a place
-            where <strong>red devils roam</strong> and{" "}
-            <strong>cotton was once king</strong>.
+            great island of the West. The ancient maps speak of a place
+            where <strong>skyscrapers touch the clouds</strong> and{" "}
+            <strong>the big apple never sleeps</strong>.
           </p>
           <p className="text-sm mt-3 opacity-60">
             Sail yer ship to the right coordinates to claim the bounty...
@@ -126,7 +141,7 @@ export default function TreasureHunt() {
               </p>
             )}
             <p className="mt-4 text-sm opacity-50 italic">
-              Hint: The treasure be buried where the Bee meets the Red Rose... &#127801;&#128029;
+              Hint: The treasure be buried on an island where Lady Liberty watches... &#127961;&#128509;
             </p>
           </div>
         )}
